@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>SentriDoor — Live IoT Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/mqtt/dist/mqtt.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    :root{--bg:#0b1220;--card:#0f1a2a;--muted:#98a0b3;--accent:#00d084;--danger:#ff6b6b}
+    html,body{height:100%;margin:0;background:linear-gradient(180deg,#071028 0%,#081428 100%);font-family:Inter, system-ui,Segoe UI,Roboto,Helvetica,Arial;color:#e6eef6}
+    .wrap{max-width:1200px;margin:24px auto;padding:20px}
+    header{display:flex;gap:16px;align-items:center}
+    h1{margin:0;font-size:20px}
+    .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:16px}
+    .card{background:var(--card);padding:14px;border-radius:12px;box-shadow:0 6px 18px rgba(2,8,23,0.6)}
+    .wide{grid-column:span 2}
+    .row{display:flex;gap:12px;align-items:center}
+    .stat{flex:1;padding:12px;border-radius:10px;background:linear-gradient(180deg,rgba(255,255,255,0.02),transparent)}
+    .muted{color:var(--muted);font-size:12px}
+    button{background:var(--accent);border:none;padding:8px 12px;border-radius:8px;color:#012;cursor:pointer}
+    .danger{background:var(--danger)}
+    input,select{background:#071522;border:1px solid rgba(255,255,255,0.04);color:inherit;padding:8px;border-radius:8px}
+    .controls{display:flex;gap:8px;flex-wrap:wrap}
+    .log{height:180px;overflow:auto;background:#071827;padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.02);font-family:monospace;font-size:12px}
+    .dot{display:inline-block;width:10px;height:10px;border-radius:50%}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='36' height='36'><rect rx='6' ry='6' width='36' height='36' fill='%2300d084'/><path d='M9 19 L18 8 L27 19' stroke='white' stroke-width='2' fill='none'/></svg>" alt="logo"/>
+      <div>
+        <h1>SentriDoor — Live IoT Dashboard</h1>
+        <div class="muted">Professional IoT UI • MQTT over WebSockets • Real-time telemetry & controls</div>
+      </div>
+    </header>
+
+    <div class="grid">
+      <div class="card">
+        <div class="muted">MQTT Broker (WebSocket)</div>
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <input id="brokerUrl" placeholder="wss://broker.example.com" style="flex:1" value="wss://test.mosquitto.org:8081"/>
+          <input id="clientId" placeholder="client id" style="width:180px" value="sentri-dashboard-123"/>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <input id="username" placeholder="username (optional)" style="flex:1"/>
+          <input id="password" placeholder="password" style="width:160px" type="password"/>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:10px">
+          <button id="connectBtn">Connect</button>
+          <button id="disconnectBtn" class="danger">Disconnect</button>
+          <div style="margin-left:auto;display:flex;gap:8px;align-items:center"><div id="connDot" class="dot" style="background:gray"></div><div id="connText" class="muted">Disconnected</div></div>
+        </div>
+
+        <hr style="margin:12px 0;border:0;border-top:1px solid rgba(255,255,255,0.03)"/>
+        <div class="muted">Topic mapping (subscribe / publish)</div>
+        <div style="display:grid;grid-template-columns:1fr 280px;gap:8px;margin-top:8px">
+          <input id="topicTelemetry" value="sentri/telemetry" />
+          <input id="topicControl" value="sentri/control" />
+        </div>
+        <div class="muted" style="margin-top:8px">Telemetry payloads expected as JSON. Example: <code>{"distance_cm":45,"pir":1,"person_score":0.92,"doorState":"closed"}</code></div>
+      </div>
+
+      <div class="card wide">
+        <div style="display:flex;justify-content:space-between;align-items:center"><div class="muted">Live Charts</div><div class="muted">Last update: <span id="lastUpdate">-</span></div></div>
+        <div style="display:flex;gap:12px;margin-top:12px">
+          <canvas id="distanceChart" style="flex:1;height:160px"></canvas>
+          <canvas id="personChart" style="width:260px;height:160px"></canvas>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="muted">Status</div>
+        <div class="row" style="margin-top:12px">
+          <div class="stat">
+            <div class="muted">Distance (cm)</div>
+            <div id="distanceVal" style="font-size:28px">—</div>
+          </div>
+          <div class="stat">
+            <div class="muted">PIR</div>
+            <div id="pirVal" style="font-size:28px">—</div>
+          </div>
+          <div class="stat">
+            <div class="muted">Person Score</div>
+            <div id="personVal" style="font-size:28px">—</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:12px">
+          <div class="stat" style="flex:1">
+            <div class="muted">Door State</div>
+            <div id="doorVal" style="font-size:20px">—</div>
+          </div>
+          <div class="stat" style="flex:1">
+            <div class="muted">Deterrent</div>
+            <div id="deterrentVal" style="font-size:20px">—</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="muted">Manual Controls</div>
+        <div class="controls" style="margin-top:12px">
+          <button onclick="publishControl({action:'open'})">Open Door</button>
+          <button onclick="publishControl({action:'close'})" class="danger">Close Door</button>
+          <button onclick="publishControl({action:'enable_deterrent'})">Enable Deterrent</button>
+          <button onclick="publishControl({action:'disable_deterrent'})">Disable Deterrent</button>
+          <button onclick="publishControl({action:'clear_events'})">Clear Events</button>
+        </div>
+        <div style="margin-top:10px" class="muted">When a control is published the device should honor it and publish an event back to telemetry with source="cloud_dashboard"</div>
+      </div>
+
+      <div class="card" style="grid-column:span 3">
+        <div class="muted">Event Log</div>
+        <div id="log" class="log" style="margin-top:8px"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // --- Charts setup ---
+    const distanceCtx = document.getElementById('distanceChart').getContext('2d');
+    const personCtx = document.getElementById('personChart').getContext('2d');
+
+    const distanceChart = new Chart(distanceCtx, {
+      type: 'line',
+      data: { labels: [], datasets: [{ label:'Distance (cm)', data:[], tension:0.3, fill:true }]},
+      options: {responsive:true, plugins:{legend:{display:false}}, scales:{x:{display:false}}}
+    });
+
+    const personChart = new Chart(personCtx, {
+      type: 'doughnut',
+      data: { labels:['Person score','Remaining'], datasets:[{data:[0,100]}]},
+      options:{responsive:true, plugins:{legend:{position:'bottom'}}}
+    });
+
+    // --- UI elements ---
+    const connDot = document.getElementById('connDot');
+    const connText = document.getElementById('connText');
+    const lastUpdate = document.getElementById('lastUpdate');
+    const logEl = document.getElementById('log');
+
+    let client = null;
+    let telemetryTopic = document.getElementById('topicTelemetry').value;
+    let controlTopic = document.getElementById('topicControl').value;
+
+    function addLog(msg){
+      const now = new Date().toLocaleString();
+      logEl.innerHTML = `[${now}] ${msg}\n` + logEl.innerHTML;
+    }
+
+    function setConnected(yes){
+      connDot.style.background = yes ? 'limegreen' : 'gray';
+      connText.textContent = yes ? 'Connected' : 'Disconnected';
+    }
+
+    // --- MQTT connect/disconnect ---
+    document.getElementById('connectBtn').onclick = () => {
+      const url = document.getElementById('brokerUrl').value.trim();
+      const clientId = document.getElementById('clientId').value.trim() || 'sentri-dashboard-'+Math.floor(Math.random()*1000);
+      const username = document.getElementById('username').value || undefined;
+      const password = document.getElementById('password').value || undefined;
+      telemetryTopic = document.getElementById('topicTelemetry').value || 'sentri/telemetry';
+      controlTopic = document.getElementById('topicControl').value || 'sentri/control';
+
+      if(!url){alert('Enter broker WebSocket URL (wss:// or ws://)');return}
+      addLog('Connecting to ' + url + ' as ' + clientId);
+
+      try{
+        client = mqtt.connect(url, {clientId, username, password, keepalive:30, reconnectPeriod:2000});
+      }catch(e){ addLog('connect error: '+e.message); return }
+
+      client.on('connect', () => {
+        setConnected(true);
+        addLog('MQTT connected — subscribing to ' + telemetryTopic);
+        client.subscribe(telemetryTopic, {qos:0}, (err) => { if(err) addLog('subscribe error:'+err.message) });
+      });
+
+      client.on('reconnect', () => addLog('MQTT reconnecting...'));
+      client.on('close', () => { setConnected(false); addLog('MQTT closed') });
+      client.on('error', (err) => { addLog('MQTT error: '+err.message) });
+
+      client.on('message', (topic, payload) => {
+        try{
+          const str = payload.toString();
+          const data = JSON.parse(str);
+          handleTelemetry(data);
+        }catch(e){ addLog('invalid payload: '+payload.toString()) }
+      });
+    };
+
+    document.getElementById('disconnectBtn').onclick = () => {
+      if(client){client.end(); client=null; setConnected(false); addLog('Disconnected by user')}
+    };
+
+    // --- Telemetry handler ---
+    function handleTelemetry(data){
+      const t = new Date(); lastUpdate.textContent = t.toLocaleTimeString();
+      if('distance_cm' in data){ document.getElementById('distanceVal').textContent = data.distance_cm; pushDistance(data.distance_cm); }
+      if('pir' in data){ document.getElementById('pirVal').textContent = data.pir ? 'Motion' : 'No motion'; }
+      if('person_score' in data){ document.getElementById('personVal').textContent = (data.person_score*100).toFixed(0)+'%'; updatePersonChart(data.person_score*100); }
+      if('doorState' in data){ document.getElementById('doorVal').textContent = data.doorState; }
+      if('deterrentEnabled' in data){ document.getElementById('deterrentVal').textContent = data.deterrentEnabled ? 'Enabled' : 'Disabled'; }
+
+      // log compact event
+      if('event' in data){ addLog(JSON.stringify(data.event)); }
+    }
+
+    function pushDistance(value){
+      const labels = distanceChart.data.labels;
+      const ds = distanceChart.data.datasets[0].data;
+      const now = new Date().toLocaleTimeString();
+      labels.push(now); ds.push(value);
+      if(labels.length>30){ labels.shift(); ds.shift(); }
+      distanceChart.update();
+    }
+
+    function updatePersonChart(percent){
+      personChart.data.datasets[0].data = [percent, Math.max(0,100-percent)];
+      personChart.update();
+    }
+
+    // --- Publish control messages ---
+    function publishControl(obj){
+      if(!client || !client.connected){ alert('Not connected to broker'); return }
+      const payload = JSON.stringify({...obj, source:'cloud_dashboard', timestamp: new Date().toISOString()});
+      client.publish(controlTopic, payload, {qos:0}, (err)=>{ if(err) addLog('Publish error:'+err.message) else addLog('Published control: '+payload) });
+    }
+
+    // --- Fallback: if no real device connected, offer a "simulate" button via console ---
+    window.simulateTelemetry = function(){
+      const sample = {
+        distance_cm: Math.floor(Math.random()*120),
+        pir: Math.random()>0.6?1:0,
+        person_score: Math.random()>0.7?0.95:Math.random()*0.3,
+        doorState: Math.random()>0.5? 'open':'closed',
+        deterrentEnabled: Math.random()>0.5
+      };
+      handleTelemetry(sample);
+      addLog('Simulated telemetry');
+    }
+
+    // small helper: auto-simulate every 8s if not connected (developer convenience)
+    setInterval(()=>{ if(!client || !client.connected) return; },8000);
+
+    addLog('Dashboard ready — enter broker details and connect');
+  </script>
+</body>
+</html>
