@@ -1,0 +1,47 @@
+feature,importance
+numeric__Total Charges,0.11999655841784787
+numeric__Tenure Months,0.11976182384844164
+numeric__Monthly Charges,0.10016927451096254
+categorical__Contract_Month-to-month,0.08904115623369614
+categorical__Online Security_No,0.04297291461896858
+categorical__Contract_Two year,0.0421412237188709
+categorical__Tech Support_No,0.0352468753800869
+categorical__Dependents_Yes,0.034251222165162895
+categorical__Dependents_No,0.03296429858885414
+categorical__Internet Service_Fiber optic,0.032281474096349023
+categorical__Payment Method_Electronic check,0.027727081038209818
+categorical__Online Backup_No,0.01615450839542652
+categorical__Contract_One year,0.01531475481177016
+categorical__Online Security_Yes,0.012951899119417075
+categorical__Paperless Billing_No,0.012767379440373627
+categorical__Paperless Billing_Yes,0.012685862055460906
+categorical__Partner_No,0.012617355905102877
+categorical__Internet Service_DSL,0.012608228501504443
+categorical__Gender_Female,0.01240747260731109
+categorical__Device Protection_No,0.012280533449520133
+categorical__Partner_Yes,0.012073773181983365
+categorical__Gender_Male,0.01205142897014927
+categorical__Tech Support_Yes,0.01093800215003633
+categorical__Payment Method_Bank transfer (automatic),0.010925216606242648
+categorical__Payment Method_Credit card (automatic),0.010860669553567045
+categorical__Online Backup_Yes,0.010333752770162708
+categorical__Multiple Lines_Yes,0.01020371240684183
+categorical__Multiple Lines_No,0.010093581990798987
+categorical__Streaming Movies_Yes,0.00950030815230285
+categorical__Senior Citizen_Yes,0.009406545675615701
+categorical__Streaming TV_Yes,0.009302092510215824
+categorical__Streaming Movies_No,0.00917609514690772
+categorical__Payment Method_Mailed check,0.009131260552529922
+categorical__Senior Citizen_No,0.00901008064482443
+categorical__Streaming TV_No,0.008638300119907523
+categorical__Device Protection_Yes,0.008513396703839417
+categorical__Device Protection_No internet service,0.006481368192264936
+categorical__Internet Service_No,0.006246921495328334
+categorical__Streaming TV_No internet service,0.005954218966641754
+categorical__Online Security_No internet service,0.0041572913285531496
+categorical__Tech Support_No internet service,0.004055950124796498
+categorical__Streaming Movies_No internet service,0.004043136360117358
+categorical__Online Backup_No internet service,0.0036761409487959832
+categorical__Multiple Lines_No phone service,0.0030852491841009654
+categorical__Phone Service_No,0.0029517673388809056
+categorical__Phone Service_Yes,0.0028478420212571637
